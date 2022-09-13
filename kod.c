@@ -28,8 +28,7 @@ static sem_t turnstille;
 static sem_t pustajLeve;
 static sem_t pustajDesne;
 static pthread_mutex_t lock=PTHREAD_MUTEX_INITIALIZER;
-static ls_t prekidacLevih;
-static ls_t prekidacDesnih;
+
 // static struct prekidacLevih{
 //     ls_t *lightswitch;
 //     sem_t *sem;
@@ -49,8 +48,8 @@ void leave (pthread_mutex_t *lock, sem_t *can_enter, int counter);
 
 int main(){
   srand(time(NULL));
-  int brojLevih=rand()%7;
-  int brojDesnih=rand()%7;
+  brojLevih=rand()%7;
+  brojDesnih=rand()%7;
 
 printf("%d babuna sa leve strane i %d babuna sa desne strane\n",brojLevih,brojDesnih);
     int i,j,a[brojLevih],b[brojDesnih];
