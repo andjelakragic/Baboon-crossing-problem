@@ -8,7 +8,7 @@
 
 
 #define MAX_BR_BABUNA_NA_KONOPCU 5
-#define MAX 15
+#define MAX 7
 
 typedef struct lightswitch {
   pthread_mutex_t *lock;
@@ -25,6 +25,8 @@ static sem_t levi[MAX_BR_BABUNA_NA_KONOPCU];
 static sem_t desniMultiplex;
 static sem_t desni[MAX_BR_BABUNA_NA_KONOPCU];
 static sem_t turnstille;
+static sem_t pustajLeve;
+static sem_t pustajDesne;
 static pthread_mutex_t lock=PTHREAD_MUTEX_INITIALIZER;
 static ls_t prekidacLevih;
 static ls_t prekidacDesnih;
@@ -46,42 +48,46 @@ void leave (pthread_mutex_t *lock, sem_t *can_enter, int counter);
 
 
 int main(){
+  srand(time(NULL));
+  int brojLevih=rand()%7;
+  int brojDesnih=rand()%7;
 
-    int i,j,a[MAX];
-	pthread_t tid[MAX];
+printf("%d babuna sa leve strane i %d babuna sa desne strane\n",brojLevih,brojDesnih);
+    int i,j,a[brojLevih],b[brojDesnih];
+	pthread_t tid1[brojLevih],tid2[brojDesnih];
 	
 	sem_init(&leviMultiplex,0,5);
     sem_init(&desniMultiplex,0,5);
     sem_init(&turnstille,0,0);
     sem_init(&konopac,0,1);
 	
-	for(i=0;i<MAX;i++){
+	for(i=0;i<brojLevih;i++){
 		sem_init(&levi[i],0,1);
     }
-    for(j=0;j<MAX;j++){
+    for(j=0;j<brojDesnih;j++){
 		sem_init(&desni[j],0,1);
     }		
-	for(i=0;i<MAX;i++){
+	for(i=0;i<brojLevih;i++){
 		a[i]=i;
-		if(pthread_create(&tid[i],NULL,prolaziLeviBabun,&(a[i]))!=0){
+		if(pthread_create(&tid1[i],NULL,prolaziLeviBabun,&(a[i]))!=0){
             perror("Nije kreirana nit\n");
         }
 	}
-    for(j=0;j<MAX;j++){
-		a[j]=j;
-		if(pthread_create(&tid[j],NULL,prolaziDesniBabun,&(a[j]))!=0){
+    for(j=0;j<brojDesnih;j++){
+		b[j]=j;
+		if(pthread_create(&tid2[j],NULL,prolaziDesniBabun,&(b[j]))!=0){
             perror("Nije kreirana nit\n");
         }
 	}
-	for(i=0;i<MAX;i++){
-		if (pthread_join(tid[i],NULL)!=0){
+	for(i=0;i<brojLevih;i++){
+		if (pthread_join(tid1[i],NULL)!=0){
             perror("Nije kreirana nit\n");
         }
     }
     	
 
-	for(j=0;j<MAX;j++){
-		if (pthread_join(tid[j],NULL)!=0){
+	for(j=0;j<brojDesnih;j++){
+		if (pthread_join(tid2[j],NULL)!=0){
             perror("Nije kreirana nit\n");
         }
     }
@@ -94,55 +100,66 @@ int main(){
 }
 
 void *prolaziLeviBabun(void* arg){
+
+   int brojBabuna=*(int *) arg;
+ 
     sem_wait(&turnstille);
+// prekidac ukljucen
     pthread_mutex_lock (&lock);
-  if (++brojLevih == 1){
+    brojLevih+=1;
+    if (brojLevih == 1){
     sem_wait (&konopac);}
-  pthread_mutex_unlock (&lock);
-    sem_post(&turnstille);
-    int brojBabuna=*(int *) arg;
+    pthread_mutex_unlock (&lock);
     
+    sem_post(&turnstille);
     sem_wait(&leviMultiplex);
     printf("\n%d babun sa leve strane dolazi\n",brojBabuna+1);
 
     sem_wait(&levi[brojBabuna]);
     printf("Babun %d prelazi sa leve na desnu stranu\n",brojBabuna+1);
-    sleep(2);
+    sleep(rand()%5); 
     sem_post(&levi[brojBabuna]);
-    printf("\nPresao babun %d sa leve na desnu stranu\n", brojBabuna+1);
-
-
+   
+    sem_post(&leviMultiplex);
+   printf("\nPresao babun %d sa leve na desnu stranu\n", brojBabuna+1);
+// prekidac iskljucen
    pthread_mutex_lock (&lock);
-  if (--brojLevih == 0){
+   brojLevih-=1;
+  if (brojLevih == 0){
     sem_post (&konopac);}
   pthread_mutex_unlock (&lock);
-   sem_post(&leviMultiplex);
+  
 }
 
 void *prolaziDesniBabun(void* arg){
+    int brojBabuna=*(int *) arg;
+   
     sem_wait(&turnstille);
-    
+    // prelidac ukljucen
      pthread_mutex_lock (&lock);
   if (++brojDesnih == 1){
     sem_wait (&konopac);}
-  pthread_mutex_unlock (&lock);
+   pthread_mutex_unlock (&lock);
     sem_post(&turnstille);
     
-    int brojBabuna=*(int *) arg;
+  
     sem_wait(&desniMultiplex);
     printf("\nDolazi %d babun sa desne strane konopca\n",brojBabuna+1);
 
     sem_wait(&desni[brojBabuna]);
     printf("Babun %d prelazi sa desne na levu stranu\n",brojBabuna+1);
-    sleep(2);
+    sleep(rand()%5);
     sem_post(&desni[brojBabuna]);
     printf("\nPresao babun %d sa desne na levu stranu\n", brojBabuna+1);
-    
+   
+   sem_post(&desniMultiplex); 
+
+   //prekidac iskljucen
     pthread_mutex_lock (&lock);
-  if (--brojDesnih == 0){
+   if (--brojDesnih == 0){
     sem_post (&konopac);}
   pthread_mutex_unlock (&lock);
-    sem_post(&desniMultiplex);
+    
 
 }
 void enter (pthread_mutex_t *lock, sem_t *can_enter, int counter)
