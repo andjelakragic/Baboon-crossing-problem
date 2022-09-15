@@ -108,7 +108,7 @@ void *prolaziLeviBabun(void *arg)
 
   pthread_mutex_lock(&mutexLevih);
   // sem_wait(&pustajLeve);
-  brojacLevih=brojacLevih+1;
+  brojacLevih=1;
   if(brojacLevih==1){
     sem_wait(&konopac);
   }
@@ -149,7 +149,7 @@ void *prolaziDesniBabun(void *arg)
   sem_wait(&turnstille);
   pthread_mutex_lock(&mutexDesnih);
   // sem_wait(&pustajDesne);
-  brojacDesnih=brojacDesnih+1;
+  brojacDesnih=1;
 if(brojacDesnih==1){
     sem_wait(&konopac);
   }
