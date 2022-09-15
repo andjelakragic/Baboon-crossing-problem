@@ -11,6 +11,8 @@
 
 static int brojLevih = 0;
 static int brojDesnih = 0;
+int brojacLevih=0;
+int brojacDesnih=0;
 
 static sem_t konopac;
 static sem_t leviMultiplex;
@@ -21,19 +23,20 @@ static sem_t turnstille;
 static sem_t pustajLeve;
 static sem_t pustajDesne;
 static pthread_mutex_t mutex= PTHREAD_MUTEX_INITIALIZER;
-
+static pthread_mutex_t mutexLevih=PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t mutexDesnih=PTHREAD_MUTEX_INITIALIZER;
 
 
 void *prolaziLeviBabun(void *arg);
 void *prolaziDesniBabun(void *arg);
-void enter(pthread_mutex_t *lock, sem_t *can_enter, int counter);
-void leave(pthread_mutex_t *lock, sem_t *can_enter, int counter);
+// void enter(pthread_mutex_t *lock, sem_t *can_enter, int counter);
+// void leave(pthread_mutex_t *lock, sem_t *can_enter, int counter);
 
 int main()
 {
   srand(time(NULL));
-  brojLevih = rand() % 5;
-  brojDesnih = rand() % 5;
+  brojLevih = 10;
+  brojDesnih = 10;
 
   printf("%d babuna sa leve strane i %d babuna sa desne strane\n", brojLevih, brojDesnih);
   int i, j, a[brojLevih], b[brojDesnih];
@@ -41,8 +44,10 @@ int main()
 
   sem_init(&leviMultiplex, 0, 5);
   sem_init(&desniMultiplex, 0, 5);
-  sem_init(&turnstille, 0, 0);
+  sem_init(&turnstille, 0, 1);
   sem_init(&konopac, 0, 1);
+  sem_init(&pustajDesne,0,1);
+  sem_init(&pustajLeve,0,1);
 
   for (i = 0; i < brojLevih; i++)
   {
@@ -84,6 +89,9 @@ int main()
     }
   }
 
+  sem_destroy(&turnstille);
+  sem_destroy(&pustajDesne);
+  sem_destroy(&pustajLeve);
   sem_destroy(&konopac);
   sem_destroy(&leviMultiplex);
   sem_destroy(&desniMultiplex);
@@ -96,68 +104,70 @@ void *prolaziLeviBabun(void *arg)
 
   int brojBabuna = *(int *)arg;
 
-  // sem_wait(&turnstille);
- 
-  // pthread_mutex_lock(&lock);
-  // brojLevih += 1;
-  // if (brojLevih <= 5)
-  // {
-  //   sem_wait(&konopac);
-  // }
-  // pthread_mutex_unlock(&lock);
+  sem_wait(&turnstille);
 
-  // sem_post(&turnstille);
-  pthread_mutex_lock(&mutex);
+  
+  sem_wait(&pustajLeve);
+  if(++brojacLevih==1){
+    sem_wait(&konopac);
+  }
+  sem_post(&pustajLeve);
+
+  sem_post(&turnstille);
+
+ pthread_mutex_lock(&mutex);
   sem_wait(&leviMultiplex);
-  printf("\n%d babun sa leve strane dolazi\n", brojBabuna + 1);
+  printf("\n%d babun sa leve strane dolazi, %d brojacLevih, %dbrojacDesnih\n", brojBabuna + 1, brojacLevih,brojacDesnih);
 
   sem_wait(&levi[brojBabuna]);
   printf("Babun %d prelazi sa leve na desnu stranu\n", brojBabuna + 1);
-  sleep(rand() % 5);
+  sleep(10);
   sem_post(&levi[brojBabuna]);
 
   sem_post(&leviMultiplex);
-  printf("\nPresao babun %d sa leve na desnu stranu\n", brojBabuna + 1);
+  printf("\nPresao babun %d sa leve na desnu stranu, %d brojacLevih, %dbrojacDesnih\n", brojBabuna + 1, brojacLevih, brojacDesnih);
  pthread_mutex_unlock(&mutex);
-  // pthread_mutex_lock(&lock);
-  // brojLevih -= 1;
-  // if (brojLevih == 0)
-  // {
-  //   sem_post(&konopac);
-  // }
-  // pthread_mutex_unlock(&lock);
+
+  sem_wait(&pustajLeve);
+  if(--brojacLevih==0){
+    sem_post(&konopac);
+  }
+  sem_post(&pustajLeve);
+
+ 
 }
 
 void *prolaziDesniBabun(void *arg)
 {
   int brojBabuna = *(int *)arg;
-
-  // sem_wait(&turnstille);
   
-  // pthread_mutex_lock(&);
-  // if (++brojDesnih <= 5)
-  // {
-  //   sem_wait(&konopac);
-  // }
-  // pthread_mutex_unlock(&lock);
-  // sem_post(&turnstille);
-  pthread_mutex_lock(&mutex);
+  sem_wait(&turnstille);
+  
+  sem_wait(&pustajDesne);
+if(++brojacDesnih==1){
+    sem_wait(&konopac);
+  }
+  sem_post(&pustajDesne);
+
+  sem_post(&turnstille);
+
+ pthread_mutex_lock(&mutex);
   sem_wait(&desniMultiplex);
-  printf("\nDolazi %d babun sa desne strane konopca\n", brojBabuna + 1);
+  printf("\nDolazi %d babun sa desne strane konopca, %d brojacLevih, %d brojacDesnih\n", brojBabuna + 1, brojacLevih,brojacDesnih);
 
   sem_wait(&desni[brojBabuna]);
   printf("Babun %d prelazi sa desne na levu stranu\n", brojBabuna + 1);
-  sleep(rand() % 5);
+  sleep(2);
   sem_post(&desni[brojBabuna]);
-  printf("\nPresao babun %d sa desne na levu stranu\n", brojBabuna + 1);
+  printf("\nPresao babun %d sa desne na levu stranu, %d brojacLevih, %d brojacDesnih\n", brojBabuna + 1, brojacLevih, brojacDesnih);
 
   sem_post(&desniMultiplex);
   pthread_mutex_unlock(&mutex);
+  sem_wait(&pustajDesne);
+  if(--brojacLevih==0){
+    sem_post(&konopac);
+  }
+  sem_post(&pustajDesne);
+ 
   
-  // pthread_mutex_lock(&lock);
-  // if (--brojDesnih == 0)
-  // {
-  //   sem_post(&konopac);
-  // }
-  // pthread_mutex_unlock(&lock);
 }
